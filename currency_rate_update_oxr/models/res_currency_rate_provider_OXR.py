@@ -33,7 +33,7 @@ class ResCurrencyRateProviderOXR(models.Model):
                 else 'Unknown error'
             )
 
-        return data.keys()
+        return list(data.keys())
 
     @api.multi
     def _obtain_rates(self, base_currency, currencies, date_from, date_to):
@@ -103,6 +103,6 @@ class ResCurrencyRateProviderOXR(models.Model):
         request = urllib.request.Request(url)
         request.add_header(
             'Authorization',
-            'Bearer %s' % self.company_id.openexchangerates_app_id
+            'Token %s' % self.company_id.openexchangerates_app_id
         )
         return urllib.request.urlopen(request)

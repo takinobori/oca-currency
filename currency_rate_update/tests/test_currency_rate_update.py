@@ -32,6 +32,7 @@ class TestCurrencyRateUpdate(common.SavepointCase):
         self.today = fields.Date.today()
         self.eur_currency = self.env.ref('base.EUR')
         self.usd_currency = self.env.ref('base.USD')
+        self.chf_currency = self.env.ref('base.CHF')
         self.company = self.Company.create({
             'name': 'Test company',
             'currency_id': self.eur_currency.id,
@@ -171,3 +172,47 @@ class TestCurrencyRateUpdate(common.SavepointCase):
         self.CurrencyRate.search([
             ('company_id', '=', self.company.id),
         ]).unlink()
+
+    def test_update_ECB_weekend(self):
+        self.ecb_provider.interval_type = 'days'
+        self.ecb_provider.interval_number = 1
+        self.ecb_provider.last_successful_run = None
+        self.ecb_provider.next_run = date(2019, 7, 1)
+
+        self.ecb_provider._scheduled_update()
+        self.ecb_provider._scheduled_update()
+        self.ecb_provider._scheduled_update()
+        self.ecb_provider._scheduled_update()
+        self.ecb_provider._scheduled_update()
+
+        self.assertEqual(
+            self.ecb_provider.last_successful_run,
+            date(2019, 7, 5)
+        )
+        self.assertEqual(
+            self.ecb_provider.next_run,
+            date(2019, 7, 6)
+        )
+
+        self.ecb_provider._scheduled_update()
+        self.ecb_provider._scheduled_update()
+
+        self.assertEqual(
+            self.ecb_provider.last_successful_run,
+            date(2019, 7, 7)
+        )
+        self.assertEqual(
+            self.ecb_provider.next_run,
+            date(2019, 7, 8)
+        )
+
+    def test_foreign_base_currency(self):
+        self.company.currency_id = self.chf_currency
+        self.test_update_ECB_today()
+        self.test_update_ECB_month()
+        self.test_update_ECB_year()
+        self.test_update_ECB_scheduled()
+        self.test_update_ECB_no_base_update()
+        self.test_update_ECB_sequence()
+        self.test_update_ECB_weekend()
+        self.company.currency_id = self.eur_currency
